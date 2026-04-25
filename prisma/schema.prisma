@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                                        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  login_id                                  String        @unique @db.VarChar
+  password                                  String
+  created_at                                DateTime      @default(now()) @db.Timestamptz(6)
+  api_configs_api_configs_created_byTousers api_configs[] @relation("api_configs_created_byTousers")
+  api_configs_api_configs_updated_byTousers api_configs[] @relation("api_configs_updated_byTousers")
+  api_logs                                  api_logs[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model api_configs {
+  id                                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                String     @db.VarChar(255)
+  target_system                       String     @db.VarChar(100)
+  protocol                            String     @db.VarChar(50)
+  url                                 String
+  method                              String?    @db.VarChar(10)
+  is_active                           Boolean?   @default(true)
+  description                         String?
+  created_at                          DateTime?  @default(now()) @db.Timestamptz(6)
+  updated_at                          DateTime?  @default(now()) @db.Timestamptz(6)
+  created_by                          String     @db.Uuid
+  updated_by                          String?    @db.Uuid
+  request_payload                     Json?
+  users_api_configs_created_byTousers users      @relation("api_configs_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_api_configs_updated_byTousers users?     @relation("api_configs_updated_byTousers", fields: [updated_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  api_logs                            api_logs[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model api_logs {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  correlation_id    String?     @db.Uuid
+  api_config_id     String      @db.Uuid
+  user_id           String      @db.Uuid
+  status            String      @db.VarChar(20)
+  status_code       String?     @db.VarChar(20)
+  request_payload   Json?
+  response_payload  Json?
+  error_msg         String?
+  retry_count       Int         @default(0)
+  requested_at      DateTime    @default(now()) @db.Timestamptz(6)
+  responded_at      DateTime?   @db.Timestamptz(6)
+  execution_time_ms Int?
+  idx               Int         @default(autoincrement())
+  is_processed      Boolean     @default(false)
+  api_configs       api_configs @relation(fields: [api_config_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users             users       @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([idx(sort: Desc)], map: "idx_api_logs_sequence")
+}
