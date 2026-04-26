@@ -4,7 +4,9 @@ import {
   IsOptional,
   IsBoolean,
   IsObject,
+  IsInt,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateApiConfigDto {
   @IsString()
@@ -38,4 +40,14 @@ export class CreateApiConfigDto {
   @IsObject()
   @IsOptional()
   request_payload?: any;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  limit?: number;
 }
