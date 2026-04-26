@@ -144,11 +144,21 @@ export class ApiConfigsService {
   }
 
   /**
-   * [전체 목록 조회]
-   * 등록된 모든 API 리스트 가져오기
+   * [목록 조회 - 페이지네이션 적용]
+   * @param page 조회할 페이지 번호
+   * @param limit 한 페이지에 보여줄 개수
    */
-  async findAll() {
-    return await this.prisma.api_configs.findMany({
+  async findAll(page: number = 1, limit: number = 50) {
+    // 1. 건너뛸 개수 계산 (예: 2페이지고 50개씩이면 앞의 50개를 skip)
+    const skip = (page - 1) * limit;
+
+    // 2. 전체 데이터 개수 조회 (프론트 페이지네이션 계산용)
+    const total = await this.prisma.api_configs.count();
+
+    // 3. 조건에 맞는 데이터만 조회
+    const data = await this.prisma.api_configs.findMany({
+      skip: skip,
+      take: limit,
       orderBy: {
         created_at: 'desc',
       },
@@ -158,6 +168,14 @@ export class ApiConfigsService {
         },
       },
     });
+
+    // 4. 데이터와 전체 개수를 함께 반환
+    return {
+      data,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   /**

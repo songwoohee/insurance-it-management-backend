@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { CreateApiLogDto } from './dto/create-api-log.dto';
+import { Prisma } from '@prisma/client';
 
 /**
  * UI상의 상태 명칭을 DB 쿼리용 필터 조건으로 변환 (서버 사이드 필터링용)
@@ -33,7 +34,11 @@ export class ApiLogsService {
   private readonly logger = new Logger(ApiLogsService.name);
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(searchDto: CreateApiLogDto) {
+  async findAll(
+    searchDto: CreateApiLogDto,
+    page: number = 1,
+    limit: number = 50,
+  ) {
     const {
       status,
       display_status,
@@ -43,60 +48,62 @@ export class ApiLogsService {
       correlation_id,
     } = searchDto;
 
-    const statusFilter = display_status
-      ? displayStatusToWhereFilter(display_status)
-      : status
-        ? { status }
-        : undefined;
+    const skip = (page - 1) * limit;
 
+    // 공통 검색 조건 정의 (count와 findMany에서 재사용)
+    const where: Prisma.api_logsWhereInput = {
+      ...(display_status
+        ? displayStatusToWhereFilter(display_status)
+        : status
+          ? { status }
+          : undefined),
+      correlation_id: correlation_id,
+      api_config_id: api_config_id || undefined,
+      api_configs: target_system
+        ? {
+            target_system: {
+              contains: target_system,
+              mode: 'insensitive' as Prisma.QueryMode,
+            },
+          }
+        : undefined,
+      users: login_id
+        ? {
+            login_id: {
+              contains: login_id,
+              mode: 'insensitive' as Prisma.QueryMode,
+            },
+          }
+        : undefined,
+    };
+
+    // 1. 조건에 맞는 전체 개수 구하기
+    const total = await this.prisma.api_logs.count({ where });
+
+    // 2. 실제 데이터 조회
     const logs = await this.prisma.api_logs.findMany({
-      where: {
-        // 값 있을 때만 조건 적용, undefined면 Prisma가 조건 무시함
-        ...statusFilter,
-        correlation_id: correlation_id,
-        api_config_id: api_config_id || undefined,
-
-        // target_system은 api_configs 관계 테이블 필드
-        api_configs: target_system
-          ? {
-              target_system: {
-                contains: target_system, // 부분 검색
-                mode: 'insensitive', // 대소문자 무시
-              },
-            }
-          : undefined,
-
-        // login_id로 users 테이블까지 타고 들어가기
-        users: login_id
-          ? {
-              login_id: {
-                contains: login_id,
-                mode: 'insensitive',
-              },
-            }
-          : undefined,
-      },
-      orderBy: {
-        requested_at: 'desc',
-      },
+      where,
+      orderBy: { requested_at: 'desc' },
       include: {
-        api_configs: {
-          select: {
-            target_system: true, // 보험사/시스템 명 (삼성생명, 토스 등)
-            url: true, // 호출했던 엔드포인트 URL
-          },
-        },
-        users: {
-          select: { login_id: true },
-        },
+        api_configs: { select: { target_system: true, url: true } },
+        users: { select: { login_id: true } },
       },
-      take: 50,
+      skip,
+      take: limit,
     });
 
-    return logs.map((log) => ({
+    // 3. 데이터 가공 및 결과 반환
+    const items = logs.map((log) => ({
       ...log,
       display_status: toDisplayStatus(log.status, log.retry_count),
     }));
+
+    return {
+      data: items,
+      total,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

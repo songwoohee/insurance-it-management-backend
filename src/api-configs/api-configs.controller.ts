@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Request,
+  Query,
 } from '@nestjs/common';
 import { ApiConfigsService } from './api-configs.service';
 import { CreateApiConfigDto } from './dto/create-api-config.dto';
@@ -49,8 +50,11 @@ export class ApiConfigsController {
 
   /* api 목록 가져오기 */
   @Get()
-  findAll() {
-    return this.apiConfigsService.findAll();
+  findAll(
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50',
+  ) {
+    return this.apiConfigsService.findAll(Number(page), Number(limit));
   }
 
   /* api 상세 내용 가져오기 */
