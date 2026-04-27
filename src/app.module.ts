@@ -9,6 +9,7 @@ import { ApiLogsModule } from './api-logs/api-logs.module';
 import { ExternalModule } from './external/external.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { FtpModule } from './ftp/ftp.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     ApiLogsModule,
     ExternalModule,
     DashboardModule,
+    FtpModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

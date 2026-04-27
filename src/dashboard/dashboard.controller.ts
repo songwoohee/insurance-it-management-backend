@@ -40,6 +40,7 @@ export class DashboardController {
     return await this.dashboardService.getTodayChartData();
   }
 
+  /* 실시간 이슈 */
   @Get('recent-failures')
   async getRecentFailures() {
     return await this.dashboardService.getRecentFailures();
