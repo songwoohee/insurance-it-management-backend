@@ -12,6 +12,10 @@ export class CreateApiLogDto {
 
   @IsOptional()
   @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
   target_system?: string;
 
   @IsOptional()

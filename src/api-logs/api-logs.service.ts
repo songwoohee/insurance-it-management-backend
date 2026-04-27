@@ -85,7 +85,7 @@ export class ApiLogsService {
       where,
       orderBy: { requested_at: 'desc' },
       include: {
-        api_configs: { select: { target_system: true, url: true } },
+        api_configs: { select: { name: true, target_system: true, url: true } },
         users: { select: { login_id: true } },
       },
       skip,
@@ -95,6 +95,7 @@ export class ApiLogsService {
     // 3. 데이터 가공 및 결과 반환
     const items = logs.map((log) => ({
       ...log,
+      api_name: log.api_configs?.name,
       display_status: toDisplayStatus(log.status, log.retry_count),
     }));
 
