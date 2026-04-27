@@ -143,6 +143,20 @@ export class ApiConfigsService {
     });
   }
 
+  /* 파일 관련 함수 판별 보조 함수 */
+  private identifyActionType(url: string, method: string) {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.includes('upload')) return 'UPLOAD';
+    if (lowerUrl.includes('bulk-download') || lowerUrl.includes('download'))
+      return 'DOWNLOAD';
+    if (
+      lowerUrl.includes('list') ||
+      (lowerUrl.includes('files') && method === 'GET')
+    )
+      return 'LIST';
+    return 'UNKNOWN';
+  }
+
   /**
    * [목록 조회 - 페이지네이션 적용]
    * @param page 조회할 페이지 번호
@@ -169,9 +183,18 @@ export class ApiConfigsService {
       },
     });
 
+    const mappedData = data.map((config) => ({
+      ...config,
+      // 아까 만든 판별 함수를 여기서 호출해서 action_type 필드를 추가해줍니다.
+      action_type: this.identifyActionType(
+        config.url ?? '',
+        config.method ?? '',
+      ),
+    }));
+
     // 4. 데이터와 전체 개수를 함께 반환
     return {
-      data,
+      data: mappedData,
       total,
       currentPage: page,
       totalPages: Math.ceil(total / limit),
