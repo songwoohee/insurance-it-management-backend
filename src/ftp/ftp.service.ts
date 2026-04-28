@@ -167,22 +167,56 @@ export class FtpService {
   }
 
   /*  3. [목록 조회] */
-  async listFiles(apiConfigId: string, requestGroupId?: string) {
-    const logs = await this.prisma.api_logs.findMany({
+  async listFiles(
+    apiConfigId: string,
+    userId: string,
+    requestGroupId?: string,
+  ) {
+    // 1. 일단 해당 그룹의 모든 로그를 가져옵니다.
+    const allLogs = await this.prisma.api_logs.findMany({
       where: {
         api_config_id: apiConfigId,
         status: 'SUCCESS',
-        // requestGroupId가 인자로 들어오면 필터링에 추가, 없으면 무시
-        ...(requestGroupId && { request_group_id: requestGroupId }),
+        request_group_id: requestGroupId,
       },
       orderBy: { requested_at: 'desc' },
     });
 
-    return logs.map((log) => ({
+    // 2. [핵심] '진짜 파일'만 골라냅니다.
+    // (우희님이 주신 DB 데이터처럼 진짜 파일은 mimetype이 들어있습니다.)
+    const realFiles = allLogs.filter((log) => {
+      const payload = log.request_payload as any;
+      return payload?.mimetype; // mimetype이 있는 로그만 진짜 파일로 간주
+    });
+
+    // 3. 진짜 파일들의 이름만 깔끔하게 합칩니다.
+    const fileNames = realFiles
+      .map((f) => (f.request_payload as any)?.fileName)
+      .join(', ');
+
+    // 4. 새로운 조회 보고서 로그 생성
+    if (requestGroupId) {
+      await this.prisma.api_logs.create({
+        data: {
+          status: 'SUCCESS',
+          request_group_id: requestGroupId,
+          users: { connect: { id: userId } },
+          api_configs: { connect: { id: apiConfigId } },
+          request_payload: {
+            // 이 로그는 mimetype이 없으므로 다음번 조회(2번 단계)에서 자동으로 제외됩니다!
+            fileName: `목록 조회 실행: [${fileNames || '데이터 없음'}]`,
+          },
+          requested_at: new Date(),
+        },
+      });
+    }
+
+    // 5. 화면에도 진짜 파일들만 보내줍니다.
+    return realFiles.map((log) => ({
       name: (log.request_payload as any)?.fileName || 'Unknown File',
       date: log.requested_at,
       logId: log.id,
-      requestGroupId: log.request_group_id, // 화면에 노출하기 위해 추가!
+      requestGroupId: log.request_group_id,
     }));
   }
 

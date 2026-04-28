@@ -101,8 +101,11 @@ export class FtpController {
   @Get(':apiConfigId/files')
   async listFiles(
     @Param('apiConfigId') apiConfigId: string,
-    @Query('requestGroupId') requestGroupId?: string, // 쿼리 파라미터로 받기
+    @Req() req: any,
+    @Query('requestGroupId') requestGroupId?: string,
   ) {
-    return await this.ftpService.listFiles(apiConfigId, requestGroupId);
+    const userId = req.user.userId;
+    console.log('apiConfigId: ', apiConfigId);
+    return await this.ftpService.listFiles(apiConfigId, userId, requestGroupId);
   }
 }
