@@ -172,15 +172,19 @@ export class FtpService {
     userId: string,
     requestGroupId?: string,
   ) {
+    console.log('1. 요청받은 apiConfigId:', apiConfigId);
+    console.log('2. 요청받은 requestGroupId:', requestGroupId);
+
     // 1. 일단 해당 그룹의 모든 로그를 가져옵니다.
     const allLogs = await this.prisma.api_logs.findMany({
       where: {
-        api_config_id: apiConfigId,
         status: 'SUCCESS',
         request_group_id: requestGroupId,
       },
       orderBy: { requested_at: 'desc' },
     });
+
+    console.log('3. DB에서 찾은 전체 로그 개수:', allLogs.length);
 
     // 2. [핵심] '진짜 파일'만 골라냅니다.
     // (우희님이 주신 DB 데이터처럼 진짜 파일은 mimetype이 들어있습니다.)
@@ -194,6 +198,8 @@ export class FtpService {
       .map((f) => (f.request_payload as any)?.fileName)
       .join(', ');
 
+    const uploadListDisplay = `[${fileNames || '데이터 없음'}]`;
+
     // 4. 새로운 조회 보고서 로그 생성
     if (requestGroupId) {
       await this.prisma.api_logs.create({
@@ -204,7 +210,7 @@ export class FtpService {
           api_configs: { connect: { id: apiConfigId } },
           request_payload: {
             // 이 로그는 mimetype이 없으므로 다음번 조회(2번 단계)에서 자동으로 제외됩니다!
-            fileName: `목록 조회 실행: [${fileNames || '데이터 없음'}]`,
+            '업로드 목록': uploadListDisplay,
           },
           requested_at: new Date(),
         },

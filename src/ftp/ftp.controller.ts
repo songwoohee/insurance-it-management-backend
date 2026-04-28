@@ -105,7 +105,6 @@ export class FtpController {
     @Query('requestGroupId') requestGroupId?: string,
   ) {
     const userId = req.user.userId;
-    console.log('apiConfigId: ', apiConfigId);
     return await this.ftpService.listFiles(apiConfigId, userId, requestGroupId);
   }
 }
